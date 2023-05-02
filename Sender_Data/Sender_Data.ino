@@ -75,7 +75,12 @@ const char* nombres[] =  {"    David Gil R.    ",
                          "   Andres Castillo  ",
                          "  Julio Colmenares  ",
                          "   Kevin Morales    ",
-                         "   Sofia Herrera    "
+                         "   Sofia Herrera    ",
+                         "   Marco Alfonso    ",
+                         "   Nicole Bernal    ",
+                         "   Camilo Rojas     ",
+                         "   Deyvid Calvache  ",
+                         "     Hans Wiest     "
                         };
 int usuario[4] = {0, 0, 0, 0};
 const int lista[][4] = {{92, 249, 134, 171},
@@ -99,7 +104,7 @@ const int lista[][4] = {{92, 249, 134, 171},
                         {118,102,38,115},
                         {82,67,234,114},
                         {27,73,55,64},
-                        {214,229,04,104},
+                        {214,229,4,104},
                         {30,195,117,81},
                         {109,182,50,169},
                         {110,252,115,81},
@@ -107,7 +112,12 @@ const int lista[][4] = {{92, 249, 134, 171},
                         {14,92,122,81},
                         {155,254,210,175},
                         {146,155,168,128},
-                        {141,37,75,45}
+                        {141,37,75,45},
+                        {91,122,10,127},
+                        {194,88,206,232},
+                        {82,139,232,114},
+                        {140,179,155,200},
+                        {84, 60, 247, 129}
                         };
 
 //----------Info Device Recived---------------//
@@ -133,12 +143,20 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("\r\nLast Packet Send Status:\t");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
+
+void printDec(byte *buffer, byte bufferSize) {
+  for (byte i = 0; i < bufferSize; i++) {
+    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+    Serial.print(buffer[i], DEC);
+  }
+}
  
 void setup() {
   // Init Serial Monitor
   Serial.begin(115200);
   SPI.begin();//Inicio Comunicación SPI
   rfid.PCD_Init(); //Inicio Comunicación RFID
+  delay(1);
   rfid2.PCD_Init(); //Inicio Comunicación RFID
  
   // Set device as a Wi-Fi Station
@@ -171,6 +189,7 @@ void setup() {
   pinMode(led_open, OUTPUT);
   pinMode(led_close, OUTPUT);
   pinMode(push_out, INPUT);
+  digitalWrite(push_out, HIGH); 
   digitalWrite(signal_relay, LOW);
   digitalWrite(led_close, HIGH);
   digitalWrite(led_open, LOW);
@@ -226,22 +245,64 @@ void loop() {
     key_A.keyByte[i] = 0xFF;
     }
     
-  Serial.println("Lectura Tarjeta 1");
+  //Serial.println("Lectura Tarjeta 1");
   if (rfid.PICC_IsNewCardPresent()) { //Si detecta una tarjeta
     if (rfid.PICC_ReadCardSerial()) { //Lee la tarjeta
       
       for (byte i = 0; i < 4; i++) {
         nuidPICC[i] = rfid.uid.uidByte[i]; //Obtiene información de la tarjeta
+        Serial.println();
+        Serial.print(F("In dec: "));
+        printDec(rfid.uid.uidByte, rfid.uid.size);
+        Serial.println();
+        Serial.println();
+        Serial.print(F("raw: "));
+        Serial.println(nuidPICC[i]);
+        Serial.println();
       }
 
       //lcd.setCursor (0, 3);//poner el cursor en las coordenadas (x,y)
       //lcd.print("   Tarjeta leida!   ");//muestra en la pantalla max 20 caracteres
       delay(20);
-      for (byte x = 0; x < 33; x++ ) {
+      for (int x = 0; x < 37; x++ ) {
+        Serial.println("Buscando...");
+
+        if(x==35){
+          Serial.println("No Leyendo");
+          strcpy(myData.a, "Usuario no encontrado ");
+          strcpy(myData.b, "Entrada");
+          myData.c = horas;
+          myData.d = minutos;
+          esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+        
+      
+        
+        //lcd.setCursor (0, 2);//poner el cursor en las coordenadas (x,y)
+        //lcd.print(" No User ");//muestra en la pantalla max 20 caracteres
+        //delay(100);
+          digitalWrite(led_close, HIGH);
+          delay(300);
+          digitalWrite(led_close, LOW);
+          delay(300);
+          digitalWrite(led_close, HIGH);
+          delay(300);
+          digitalWrite(led_close, LOW);
+          delay(300);
+          digitalWrite(led_close, HIGH);
+          delay(300);
+          digitalWrite(led_close, LOW);
+          
+          rfid.PICC_HaltA(); // halt PICC
+          rfid.PCD_StopCrypto1();
+          break;
+          }
+        
         usuario[0] = lista[x][0];
         usuario[1] = lista[x][1];
         usuario[2] = lista[x][2];
         usuario[3] = lista[x][3];
+
+        
                 
         if (usuario[0] == nuidPICC[0] &&
             usuario[1] == nuidPICC[1] &&
@@ -274,15 +335,38 @@ void loop() {
             //}
           break;
         }
-        if(x==32){
+               
+      }
+        
+        }
+     }
+
+  for (byte i = 0; i < 6; i++) {
+    key_B.keyByte[i] = 0xFF;
+    }
+  //Serial.println("Leyendo Tarjeta 2");
+  if (rfid2.PICC_IsNewCardPresent()) { //Si detecta una tarjeta
+    if (rfid2.PICC_ReadCardSerial()) { //Lee la tarjeta
+      //Serial.print(("PICC type: "));
+      //MFRC522::PICC_Type piccType2 = rfid2.PICC_GetType(rfid2.uid.sak);
+      //Serial.println(rfid.PICC_GetTypeName(piccType));
+      //Serial.println("UID Tarjeta: ");
+      for (byte i = 0; i < 4; i++) {
+        nuidPICC2[i] = rfid2.uid.uidByte[i]; //Obtiene información de la tarjeta
+      }
+      //lcd.setCursor (0, 3);//poner el cursor en las coordenadas (x,y)
+      //lcd.print("   Tarjeta leida!   ");//muestra en la pantalla max 20 caracteres
+      delay(200);
+      for (int x = 0; x < 37; x++ ) {
+        Serial.println("Buscando...");
+        if(x==35){
           Serial.println("No Leyendo");
           strcpy(myData.a, "Usuario no encontrado ");
-          strcpy(myData.b, "Entrada");
+          strcpy(myData.b, "Salida");
           myData.c = horas;
           myData.d = minutos;
           esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-        
-      
+
         
         //lcd.setCursor (0, 2);//poner el cursor en las coordenadas (x,y)
         //lcd.print(" No User ");//muestra en la pantalla max 20 caracteres
@@ -298,40 +382,19 @@ void loop() {
           digitalWrite(led_close, HIGH);
           delay(300);
           digitalWrite(led_close, LOW);
-          
-          rfid.PICC_HaltA(); // halt PICC
-          rfid.PCD_StopCrypto1();
+          rfid2.PICC_HaltA(); // halt PICC
+          rfid2.PCD_StopCrypto1();
           break;
-          }
-        
-      }
-        
-        }
-     }
-
-  for (byte i = 0; i < 6; i++) {
-    key_B.keyByte[i] = 0xFF;
+      
     }
-  Serial.println("Leyendo Tarjeta 2");
-  if (rfid2.PICC_IsNewCardPresent()) { //Si detecta una tarjeta
-    if (rfid2.PICC_ReadCardSerial()) { //Lee la tarjeta
-      //Serial.print(("PICC type: "));
-      //MFRC522::PICC_Type piccType2 = rfid2.PICC_GetType(rfid2.uid.sak);
-      //Serial.println(rfid.PICC_GetTypeName(piccType));
-      //Serial.println("UID Tarjeta: ");
-      for (byte i = 0; i < 4; i++) {
-        nuidPICC2[i] = rfid2.uid.uidByte[i]; //Obtiene información de la tarjeta
-      }
-      //lcd.setCursor (0, 3);//poner el cursor en las coordenadas (x,y)
-      //lcd.print("   Tarjeta leida!   ");//muestra en la pantalla max 20 caracteres
-      delay(200);
-      for (byte x = 0; x < 33; x++ ) {
-        //Serial.println("Buscando...");
+
+        
         usuario[0] = lista[x][0];
         usuario[1] = lista[x][1];
         usuario[2] = lista[x][2];
         usuario[3] = lista[x][3];
-                
+
+                       
         if (usuario[0] == nuidPICC2[0] &&
             usuario[1] == nuidPICC2[1] &&
             usuario[2] == nuidPICC2[2] &&
@@ -360,44 +423,17 @@ void loop() {
             //}
           break;
         }
-        if(x==32){
-          Serial.println("No Leyendo");
-          strcpy(myData.a, "Usuario no encontrado ");
-          strcpy(myData.b, "Salida");
-          myData.c = horas;
-          myData.d = minutos;
-          esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-
         
-        //lcd.setCursor (0, 2);//poner el cursor en las coordenadas (x,y)
-        //lcd.print(" No User ");//muestra en la pantalla max 20 caracteres
-        //delay(100);
-          digitalWrite(led_close, HIGH);
-          delay(300);
-          digitalWrite(led_close, LOW);
-          delay(300);
-          digitalWrite(led_close, HIGH);
-          delay(300);
-          digitalWrite(led_close, LOW);
-          delay(300);
-          digitalWrite(led_close, HIGH);
-          delay(300);
-          digitalWrite(led_close, LOW);
-          rfid2.PICC_HaltA(); // halt PICC
-          rfid2.PCD_StopCrypto1();
-          break;
-      
-    }
       }
         
   }
   }
 
-  Serial.println("Leyendo Pulsador");
-  if (digitalRead(push_out) == HIGH) {
+  //Serial.println("Leyendo Pulsador");
+  if (digitalRead(push_out) == 0) {
     open_door();
   } 
-  Serial.println("Finalizando protocolos");
+  //Serial.println("Finalizando protocolos");
   rfid.PICC_HaltA(); // halt PICC
   rfid.PCD_StopCrypto1();
   rfid2.PICC_HaltA(); // halt PICC
